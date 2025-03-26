@@ -18,7 +18,7 @@ In this task, you'll set up a simple communication protocol between a Node.js se
 
    - The Node Server should connect to the same MQTT broker.
    - It should subscribe to the same topic that the server uses to send messages.
-   - Upon receiving the JSON message, the microcontroller should parse the JSON and respond with a JSON message:
+   - Upon receiving the JSON message, the server should parse the JSON and respond with a JSON message:
      ```json
      {
        "response": "hello received"

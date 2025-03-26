@@ -1,4 +1,4 @@
-**Technical Interview Task: Node.js and Microcontroller Communication via MQTT**
+**Technical Interview Task: Node.js Server and CLI Communication via MQTT**
 
 In this task, you'll set up a simple communication protocol between a Node.js server and a local computer using MQTT. The goal is to build a CLI to send messages from your terminal to the server and have the server send an acknowledgment back in JSON.
 

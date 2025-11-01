@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Elevator Control Panel</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            border-radius: 10px;
+            padding: 30px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        .status-panel {
+            background-color: #e8f4f8;
+            border: 2px solid #4CAF50;
+            border-radius: 8px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .status-item {
+            margin: 10px 0;
+            font-size: 18px;
+        }
+        .status-label {
+            font-weight: bold;
+            color: #555;
+        }
+        .status-value {
+            color: #2196F3;
+            font-weight: bold;
+        }
+        .control-panel {
+            margin-top: 30px;
+        }
+        .button-group {
+            margin: 20px 0;
+        }
+        .button-group h3 {
+            color: #555;
+            margin-bottom: 15px;
+        }
+        .floor-buttons {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(80px, 1fr));
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        button {
+            padding: 15px 20px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        .floor-btn {
+            background-color: #2196F3;
+            color: white;
+        }
+        .floor-btn:hover {
+            background-color: #0b7dda;
+            transform: scale(1.05);
+        }
+        .floor-btn:active {
+            transform: scale(0.95);
+        }
+        .door-controls {
+            display: flex;
+            gap: 15px;
+            justify-content: center;
+        }
+        .open-btn {
+            background-color: #4CAF50;
+            color: white;
+            flex: 1;
+        }
+        .open-btn:hover {
+            background-color: #45a049;
+        }
+        .close-btn {
+            background-color: #f44336;
+            color: white;
+            flex: 1;
+        }
+        .close-btn:hover {
+            background-color: #da190b;
+        }
+        .state-indicator {
+            display: inline-block;
+            padding: 5px 15px;
+            border-radius: 15px;
+            background-color: #4CAF50;
+            color: white;
+            font-size: 14px;
+        }
+        .pending-requests {
+            color: #ff9800;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🏢 Elevator Control Panel</h1>
+        
+        <div class="status-panel">
+            <h2 style="margin-top: 0; color: #333;">Current Status</h2>
+            <div class="status-item">
+                <span class="status-label">Time:</span> 
+                <span class="status-value" id="current-time">0 ms</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">State:</span> 
+                <span class="state-indicator" id="state">Stationary</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Current Floor:</span> 
+                <span class="status-value" id="current-floor">0</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Next Floor:</span> 
+                <span class="status-value" id="next-floor">None</span>
+            </div>
+            <div class="status-item">
+                <span class="status-label">Pending Requests:</span> 
+                <span class="status-value pending-requests" id="pending-requests">[]</span>
+            </div>
+        </div>
+
+        <div class="control-panel">
+            <div class="button-group">
+                <h3>Floor Selection</h3>
+                <div class="floor-buttons" id="floor-buttons">
+                    <!-- Floor buttons will be generated here -->
+                </div>
+            </div>
+
+            <div class="button-group">
+                <h3>Door Controls</h3>
+                <div class="door-controls">
+                    <button class="open-btn" onclick="openDoor()">◀▶ OPEN DOOR</button>
+                    <button class="close-btn" onclick="closeDoor()">▶◀ CLOSE DOOR</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const maxFloor = {{ max_floor }};
+
+        // Generate floor buttons
+        function generateFloorButtons() {
+            const container = document.getElementById('floor-buttons');
+            for (let i = maxFloor; i >= 0; i--) {
+                const btn = document.createElement('button');
+                btn.className = 'floor-btn';
+                btn.textContent = `Floor ${i}`;
+                btn.onclick = () => pressFloor(i);
+                container.appendChild(btn);
+            }
+        }
+
+        // Update the status display
+        function updateStatus(state) {
+            document.getElementById('current-time').textContent = 
+                state.current_time ? Math.round(state.current_time) + ' ms' : '0 ms';
+            document.getElementById('state').textContent = state.state;
+            document.getElementById('current-floor').textContent = state.floor;
+            document.getElementById('next-floor').textContent = state.next_floor || 'None';
+            document.getElementById('pending-requests').textContent = 
+                state.pending_requests.length > 0 ? state.pending_requests.join(', ') : 'None';
+        }
+
+        // Fetch current state
+        async function fetchState() {
+            try {
+                const response = await fetch('/api/state');
+                const state = await response.json();
+                updateStatus(state);
+            } catch (error) {
+                console.error('Error fetching state:', error);
+            }
+        }
+
+        // Press floor button
+        async function pressFloor(floor) {
+            try {
+                const response = await fetch('/api/press_floor', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ floor: floor })
+                });
+                const state = await response.json();
+                updateStatus(state);
+            } catch (error) {
+                console.error('Error pressing floor:', error);
+            }
+        }
+
+        // Open door
+        async function openDoor() {
+            try {
+                const response = await fetch('/api/open_door', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                const state = await response.json();
+                updateStatus(state);
+            } catch (error) {
+                console.error('Error opening door:', error);
+            }
+        }
+
+        // Close door
+        async function closeDoor() {
+            try {
+                const response = await fetch('/api/close_door', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    }
+                });
+                const state = await response.json();
+                updateStatus(state);
+            } catch (error) {
+                console.error('Error closing door:', error);
+            }
+        }
+
+        // Initialize
+        generateFloorButtons();
+        fetchState();
+        
+        // Poll for state updates every 500ms
+        setInterval(fetchState, 500);
+    </script>
+</body>
+</html>
